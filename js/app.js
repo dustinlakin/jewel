@@ -6,7 +6,10 @@ var board = function(obj){
     rows : 8,
     cols : 6,
     jewels : 4,
-    threshold : 3
+    threshold : 3,
+    output : {
+      blockSize: 10
+    }
   };
 
   this.options = $.extend(defaults,obj);
@@ -70,15 +73,34 @@ var board = function(obj){
         matches.vertical.push(temp);
       }
     }
-
     return matches;
+  }
+
+  this.outputBoard = function(){
+    var html = ""; //our output
+    var blockSize = this.options.output.blockSize;
+
+    //output state.
+    for( var i = 0; i < this.options.rows; i++){
+      var top = i * blockSize;
+      for( var j = 0; j < this.options.rows; j++){
+        var left = j * blockSize;
+
+        html += '<div class="block" style="top:' + top + 'px; left:' + + 'px;">';
+        html += this.board[i][j]; //value 
+        html += '</div>';
+      }
+    }
+  }
+
+  this.showMatches = function(){
   }
 }
 
 var b = new board();
 b.createBoard();
 var matches = b.checkBoard();
+var html = b.outputBoard();
+$("#jewels").html(html);
 console.log(b.board);
 console.log(matches);
-
-

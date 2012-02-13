@@ -6,7 +6,7 @@ var board = function(obj){
     jewels : 5,
     threshold : 3,
     output : {
-      blockSize: 50
+      blockSize: 52
     }
   };
 
@@ -28,8 +28,8 @@ var board = function(obj){
       x:0,
       y:0
     }
-
   }
+
   this.touchDown = false;
 
   this.createBoard = function(){
@@ -193,7 +193,20 @@ var board = function(obj){
       matches.vertical.splice(value,1);
     });
 
-    //console.log("combined",matches);
+
+    //check for duplicates Doesn't scale for over 10
+    _.each(matches.both, function(both,key){
+      //console.log("before",both.length);
+      var temp = _.map(both,function(b){
+        return b[0] + '' + b[1];
+      });
+      temp = _.unique(temp);
+      temp = _.map(temp,function(b){
+        return [b[0],b[1]];
+      });
+      //console.log("after",temp.length);
+      matches.both[key] = temp;
+    });
 
     this.matches = matches;
     //return combined.length;
@@ -203,6 +216,7 @@ var board = function(obj){
   this.setupTouch = function(){
     var self = this;
     var id = this.options.id;
+    //bind starts
     document.getElementById(id).ontouchstart = function(event){
       self.touchStarted(event);
     }
@@ -210,6 +224,7 @@ var board = function(obj){
       self.touchStarted(event);
     }
 
+    //bind the moves
     document.getElementById(id).ontouchend = function(event){
       self.touchEnded(event);
     }
@@ -217,6 +232,7 @@ var board = function(obj){
       self.touchEnded(event);
     }
 
+    //bind end
     document.getElementById(id).onmousemove = function(event){
       self.touchMoved(event);
     }
@@ -227,24 +243,198 @@ var board = function(obj){
 
   this.touchStarted = function(event){
     event.preventDefault();
-    this.touchDown = true;
+    this.touch.down = true;
     //lets find out which block to grab;
-    console.log(Math.floor(event.pageX/this.options.output.blockSize),Math.floor(event.pageY/this.options.output.blockSize));
-    console.log("touchStarted",event);
+    var c = Math.floor(event.pageX/this.options.output.blockSize);
+    var r = Math.floor(event.pageY/this.options.output.blockSize);
+    this.touch.startBlock.row = r;
+    this.touch.startBlock.col = c;
+    this.touch.current.x = this.touch.start.x = event.pageX;
+    this.touch.current.y = this.touch.start.y = event.pageY;
+
+    console.log("start Block", this.touch.startBlock.col,this.touch.startBlock.row);
+    //console.log("start",this.touch.start.x,this.touch.start.y);
   }
 
   this.touchMoved = function(event){
     event.preventDefault();
-    if(this.touchDown){
-      //console.log("touchMoved",event);
+    if(this.touch.down){
+      this.touch.current.x = event.pageX;
+      this.touch.current.y = event.pageY;
+      var deltaX = this.touch.current.x - this.touch.start.x;
+      var deltaY = this.touch.current.y - this.touch.start.y;
+      if( Math.abs(deltaX) > 50 ){
+        var dir = "left";
+        if( deltaX > 0 ){
+          dir = "right";
+        }
+        this.swapTiles( this.touch.startBlock, dir );
+        this.resetTouch();
+      }
+      if( Math.abs(deltaY) > 50 ){
+        var dir = "up";
+        if( deltaY > 0 ){
+          dir = "down";
+        }
+        this.swapTiles( this.touch.startBlock, dir );
+        this.resetTouch();
+      }
     }
   }
 
   this.touchEnded = function(event){
     event.preventDefault();
-    this.touchDown = false;
-    console.log("touchEnded",event);
+    if( this.touch.down ){
+      var deltaX = this.touch.current.x - this.touch.start.x;
+      var deltaY = this.touch.current.y - this.touch.start.y;
+      //console.log("traveled", Math.abs(deltaX)  , Math.abs(deltaY) );
+      //if( Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10 ){
+        if( Math.abs(deltaX) > Math.abs(deltaY) ){
+          var dir = "left";
+          if( deltaX > 0 ){
+            dir = "right";
+          }
+          this.swapTiles( this.touch.startBlock, dir );
+        }else{
+          var dir = "up";
+          if( deltaY > 0 ){
+            dir = "down";
+          }
+          this.swapTiles( this.touch.startBlock, dir );
+        }
+      //}
+      this.resetTouch();
+    }
+    //console.log("end",this.touch.current.x,this.touch.current.y);
   }
+
+  this.resetTouch = function(){
+    this.touch = {
+      down : false,
+      startBlock : {
+        col : 0,
+        row : 0
+      },
+      start : {
+        x:0,
+        y:0
+      },
+      current : {
+        x:0,
+        y:0
+      }
+    }
+  }
+
+  this.swapTiles = function( tile, direction ){
+    var col = tile.col;
+    var row = tile.row;
+    
+    var first = [row,col];
+    var second = [];
+    switch( direction ){
+      case 'left':
+        if( col === 0 )
+          return false;
+        second = [row,col - 1];
+        break;
+      case 'right':
+        if( col === this.options.cols - 1 )
+          return false;
+        second = [row,col + 1];
+        break;
+      case 'up':
+        if( row === 0 )
+          return false;
+        second = [row - 1,col];
+        break;
+      case 'down':
+        if( row === this.options.rows - 1 )
+          return false;
+        second = [row + 1,col];
+        break;
+    }
+    this.swap(first,second, true);
+  }
+
+  this.swap = function( first, second, check){
+    var self = this;
+    var blockSize = this.options.output.blockSize;
+    var count = 0;
+    var valid = true;
+
+    console.log("switch :[" + first[0] + "," + first[1] + "] with [" + second[0] + "," + second[1] + "]");
+    //animate first
+    $( "#" + this.board[first[0]][first[1]].id ).css({
+      "z-index" : 1
+    }).animate({
+      top: second[0] * blockSize,
+      left: second[1] * blockSize
+    },function(){
+      if( check && count++ == 2 ){
+        if( !valid ){
+          self.swap(second, first, false);
+        }else{
+          self.removeMatches();
+        }
+      }
+    });
+
+    //animate second
+    $( "#" + this.board[second[0]][second[1]].id ).css({
+      "z-index" : 0
+    }).animate({
+      top: first[0] * blockSize,
+      left: first[1] * blockSize
+    },function(){
+      //check if all three have been called; 
+      if( check && count++ == 2 ){
+        if( !valid ){
+          self.swap(second, first, false);
+        }else{
+          self.removeMatches();
+        }
+      }
+    });
+
+    //do the swap
+    var temp = this.board[first[0]][first[1]];
+    this.board[first[0]][first[1]] = this.board[second[0]][second[1]];
+    this.board[second[0]][second[1]] = temp;
+
+    if( check ){
+      var matches = this.checkBoard();
+      if( matches.both.length > 0 || matches.horizontal.length > 0 || matches.vertical.length > 0 ){
+        if( count++ == 2 ){
+          this.removeMatches();
+        }
+      }else{
+        valid = false;
+        if( check && count++ == 2 )
+          if( !valid )
+            self.swap(second, first, false);
+      }
+    }
+  }
+
+  this.removeMatches = function(){
+    var buckets = [];
+    var toRemove = _.flatten(_.union( this.matches.both, this.matches.vertical, this.matches.horizontal),true);
+    console.log(toRemove);
+    _.each(toRemove, function(value){
+      if( !buckets[value[1]] ){
+        buckets[value[1]] = [];
+      }
+      buckets[value[1]].push( value[0] );
+      var item = this.board[value[0]][value[1]];
+      $("#" + item.id ).fadeOut();
+    },this);
+
+    //buckets
+
+    console.log(buckets);
+  }
+
 
   this.outputBoard = function(){
     var html = ""; //our output
@@ -263,7 +453,7 @@ var board = function(obj){
         var left = j * blockSize; 
 
         html += '<div id="' + this.board[i][j].id + '" class="block" style="top:' + top + 'px; left:' + left + 'px; background-color: ' + colors[this.board[i][j].num] + ';">';
-        html += this.board[i][j].num; //value 
+        //html += 'o';
         html += '</div>';
       }
     }
@@ -275,22 +465,28 @@ var board = function(obj){
     //check for horizontal. turn red
     _.each(this.matches.horizontal,function(arr){
       _.each(arr,function(a){
-        $("#" + a[0] + "_" + a[1]).css({ background: "#C93044"});
-      });
-    });
+        $('#' + this.board[a[0]][a[1]].id).css({
+          'font-weight' : 'bold'
+        });
+      },this);
+    },this);
 
     _.each(this.matches.vertical,function(arr){
       _.each(arr,function(a){
-        $("#" + a[0] + "_" + a[1]).css({ background: "#3A9CC9"});
-      });
-    });
+        $('#' + this.board[a[0]][a[1]].id).css({
+          'font-weight' : 'bold'
+        });
+      },this);
+    },this);
 
     _.each(this.matches.both,function(arr){
       var color = '#'+Math.floor(Math.random()*16777215).toString(16);
       _.each(arr,function(a){
-        $("#" + a[0] + "_" + a[1]).css({ background: color});
-      });
-    });
+        $('#' + this.board[a[0]][a[1]].id).css({
+          'font-weight' : 'bold'
+        });
+      },this);
+    },this);
   }
 }
 

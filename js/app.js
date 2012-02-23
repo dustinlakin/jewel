@@ -13,6 +13,7 @@ var board = function(obj){
   this.options = $.extend(defaults,obj);
   this.board = [];
   this.matches = [];
+  this.combo = 1;
 
   this.touch = {
     down : false,
@@ -41,7 +42,8 @@ var board = function(obj){
         var unique = "block" + i + j + "_" +Math.floor(Math.random() * 10000);
         row[j] = {
           num : number,
-          id : unique
+          id : unique,
+          pos : [i,j]
         }
       }
       this.board[i] = row;
@@ -252,7 +254,7 @@ var board = function(obj){
     this.touch.current.x = this.touch.start.x = event.pageX;
     this.touch.current.y = this.touch.start.y = event.pageY;
 
-    console.log("start Block", this.touch.startBlock.col,this.touch.startBlock.row);
+    //console.log("start Block", this.touch.startBlock.col,this.touch.startBlock.row);
     //console.log("start",this.touch.start.x,this.touch.start.y);
   }
 
@@ -363,7 +365,7 @@ var board = function(obj){
     var count = 0;
     var valid = true;
 
-    console.log("switch :[" + first[0] + "," + first[1] + "] with [" + second[0] + "," + second[1] + "]");
+    //console.log("switch :[" + first[0] + "," + first[1] + "] with [" + second[0] + "," + second[1] + "]");
     //animate first
     $( "#" + this.board[first[0]][first[1]].id ).css({
       "z-index" : 1
@@ -420,21 +422,69 @@ var board = function(obj){
   this.removeMatches = function(){
     var buckets = [];
     var toRemove = _.flatten(_.union( this.matches.both, this.matches.vertical, this.matches.horizontal),true);
-    console.log(toRemove);
+    var points = toRemove.length;
+
     _.each(toRemove, function(value){
       if( !buckets[value[1]] ){
         buckets[value[1]] = [];
       }
       buckets[value[1]].push( value[0] );
       var item = this.board[value[0]][value[1]];
-      $("#" + item.id ).fadeOut();
+      $("#" + item.id ).fadeOut(function(){
+        $(this).remove();
+      });
+
+      this.board[value[0]][value[1]] = null;
     },this);
 
-    //buckets
+    _(buckets).each(function(value,key){
+      var stack = [];
+      for( var i = this.options.rows -1; i >= 0; i-- ){
+        if( this.board[i][key] ){
+          stack.push( this.board[i][key] );
+        }
+      }
+      
+      var blockSize = this.options.output.blockSize;
+      var colors = ["#FFBA00","#E5671A","#A62B56","#085159","#261F26"];
+      var count = -1;
+      for( var i = value.length-1; i > -1 ; i-- ){
+        var number = Math.floor(Math.random() * this.options.jewels);
+        var unique = "block" + i + key + "_" +Math.floor(Math.random() * 10000);
+        stack.push( {
+          num : number,
+          id : unique,
+          pos : [count,key]
+        })
+        //create its location as well.
+        var top = count-- * blockSize;
+        var left = key * blockSize;
+        html = '<div id="' + unique + '" class="block" style="top:' + top + 'px; left:' + left + 'px; background-color: ' + colors[number] + ';">';
+        $("#" + this.options.id).append(html);
+      }
 
-    console.log(buckets);
+      for( var i = 0, len = stack.length; i < len; i++ ){
+        this.board[i][key] = stack.pop();
+        var item = this.board[i][key];
+        if( item.pos[0] !== i ){
+          var speed = 500 * ( i - item.pos[0] );
+          $("#" + item.id).animate({
+            top: blockSize * i
+          });
+        }
+      }
+      //console.log(stack);
+      //console.log(key,value);
+    },this);
+    var matches = this.checkBoard();
+    //console.log( this.combo * points, this.combo);
+    if(matches.vertical.length !== 0 || matches.horizontal.length !== 0 || matches.both.length !== 0){
+      //this.combo++;
+      this.removeMatches();
+    }else{
+      //this.combo = 1;
+    }
   }
-
 
   this.outputBoard = function(){
     var html = ""; //our output
@@ -504,3 +554,6 @@ $("#jewels").html(html);
 b.setupTouch();
 b.showMatches();
 console.log("trys",trys);
+$(document).ready(function(){
+window.scroll(0,0);
+});

@@ -9,6 +9,7 @@ var board = function(obj){
       blockSize: 52
     }
   };
+  var self = this;
 
   this.options = $.extend(defaults,obj);
   this.board = [];
@@ -206,10 +207,18 @@ var board = function(obj){
       temp = _.map(temp,function(b){
         return [b[0],b[1]];
       });
-      //console.log("after",temp.length);
       matches.both[key] = temp;
     });
 
+    if(matches.vertical.length !== 0 || matches.horizontal.length !== 0 || matches.both.length !== 0){
+      
+      var toRemove = _.flatten(_.union( matches.both, matches.vertical, matches.horizontal),true);
+      for(var i = 0, len = toRemove.length; i < len ; i++){
+        $("#" +this.board[toRemove[i][0]][toRemove[i][1]].id).css({
+          "background-color": "red"
+        });
+      }
+    }
     this.matches = matches;
     //return combined.length;
     return matches;
@@ -423,6 +432,7 @@ var board = function(obj){
     var buckets = [];
     var toRemove = _.flatten(_.union( this.matches.both, this.matches.vertical, this.matches.horizontal),true);
     var points = toRemove.length;
+    var test1 = 0, test2 = 0;
 
     _.each(toRemove, function(value){
       if( !buckets[value[1]] ){
@@ -468,22 +478,38 @@ var board = function(obj){
         var item = this.board[i][key];
         if( item.pos[0] !== i ){
           var speed = 500 * ( i - item.pos[0] );
+          test1++;
           $("#" + item.id).animate({
             top: blockSize * i
+          },
+          function(){
+            if(++test2 == test1){
+              var matches = self.checkBoard();
+              console.log( self.combo * points, self.combo);
+              //send the points;
+              if(matches.vertical.length !== 0 || matches.horizontal.length !== 0 || matches.both.length !== 0){
+                self.combo++;
+                setTimeout(function(){
+                  self.removeMatches();
+                },200);
+              }else{
+                self.combo = 1;
+              }
+            }
           });
         }
       }
       //console.log(stack);
       //console.log(key,value);
     },this);
-    var matches = this.checkBoard();
+    /*var matches = this.checkBoard();
     //console.log( this.combo * points, this.combo);
     if(matches.vertical.length !== 0 || matches.horizontal.length !== 0 || matches.both.length !== 0){
       //this.combo++;
       this.removeMatches();
     }else{
       //this.combo = 1;
-    }
+    }*/
   }
 
   this.outputBoard = function(){

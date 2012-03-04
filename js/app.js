@@ -1,7 +1,7 @@
 var board = function(obj){
   var defaults = {
     id : "jewels",
-    rows : 8,
+    rows : 7,
     cols : 6,
     jewels : 5,
     threshold : 3,
@@ -30,8 +30,9 @@ var board = function(obj){
       x:0,
       y:0
     }
-  }
+  };
 
+  this.matching = false;
   this.touchDown = false;
 
   this.createBoard = function(){
@@ -294,6 +295,9 @@ var board = function(obj){
   }
 
   this.touchEnded = function(event){
+    if(this.matching)
+      return false;
+
     event.preventDefault();
     if( this.touch.down ){
       var deltaX = this.touch.current.x - this.touch.start.x;
@@ -340,7 +344,7 @@ var board = function(obj){
   this.swapTiles = function( tile, direction ){
     var col = tile.col;
     var row = tile.row;
-    
+
     var first = [row,col];
     var second = [];
     switch( direction ){
@@ -429,6 +433,7 @@ var board = function(obj){
   }
 
   this.removeMatches = function(){
+    self.matching = true;
     var buckets = [];
     var toRemove = _.flatten(_.union( this.matches.both, this.matches.vertical, this.matches.horizontal),true);
     var points = toRemove.length;
@@ -465,7 +470,7 @@ var board = function(obj){
           num : number,
           id : unique,
           pos : [count,key]
-        })
+        });
         //create its location as well.
         var top = count-- * blockSize;
         var left = key * blockSize;
@@ -494,22 +499,13 @@ var board = function(obj){
                 },200);
               }else{
                 self.combo = 1;
+                self.matching = false;
               }
             }
           });
         }
       }
-      //console.log(stack);
-      //console.log(key,value);
     },this);
-    /*var matches = this.checkBoard();
-    //console.log( this.combo * points, this.combo);
-    if(matches.vertical.length !== 0 || matches.horizontal.length !== 0 || matches.both.length !== 0){
-      //this.combo++;
-      this.removeMatches();
-    }else{
-      //this.combo = 1;
-    }*/
   }
 
   this.outputBoard = function(){
@@ -565,6 +561,22 @@ var board = function(obj){
     },this);
   }
 }
+
+var game = function(obj){
+  this.state = 0;
+
+  this.score = {
+    my : 0,
+    opponent : 0
+  };
+
+  this.init = function(obj){
+
+  };
+  
+  this.init(obj);
+}
+
 
 var b = new board();
 var matches = null;

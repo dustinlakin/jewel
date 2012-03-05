@@ -491,6 +491,7 @@ var board = function(obj){
             if(++test2 == test1){
               var matches = self.checkBoard();
               console.log( self.combo * points, self.combo);
+              self.addScore( self.combo * points );
               //send the points;
               if(matches.vertical.length !== 0 || matches.horizontal.length !== 0 || matches.both.length !== 0){
                 self.combo++;
@@ -560,10 +561,17 @@ var board = function(obj){
       },this);
     },this);
   }
+
+  this.addScore = function(score){
+    game.updateScore(score);
+  }
 }
 
-var game = function(obj){
+var Game = function(obj){
+  var self = this;
   this.state = 0;
+  this.board;
+  this.socket;
 
   this.score = {
     my : 0,
@@ -571,27 +579,110 @@ var game = function(obj){
   };
 
   this.init = function(obj){
+    this.clientId = Math.round(Math.random() * 100);
+    this.socket = io.connect(obj.location +'client');
+    this.socket.on('socket', function(data){
+      self.socket.emit('setSocket', {
+        client: self.clientId,
+        socket: data.id
+      });
+      console.log(data.id);
+    });
+
+    this.socket.on('joined',function(data){
+      self.checkJoined(data);
+    });
+
+    this.socket.on('update',function(data){
+      self.setUpdate(data);
+      console.log('update',data);
+    });
+
+    this.board = new board({
+      socket: this.socket
+    });
+
+    //set up first board
+    var matches = null;
+    var trys = 0;
+    do{
+      this.board.createBoard();
+      matches = this.board.checkBoard();
+      trys++;
+    }while(matches.vertical.length !== 0 || matches.horizontal.length !== 0 || matches.both.length !== 0)
+
+    var html = this.board.outputBoard();
+    $("#jewels").html(html);
+    this.board.setupTouch();
+    this.board.showMatches();
+    console.log("trys",trys);
+  };
+
+  this.createGame = function(gameName){
+    this.socket.emit('createGame',{
+      'gameName' : gameName
+    });
+  };
+
+  this.joinGame = function(gameName){
+    this.socket.emit('joinGame', {
+      'gameName' : gameName
+    });
+  };
+
+  this.updateScore = function(score){
+    this.socket.emit('updateScore',{ 
+      'gameId' : this.gameId,
+      'clientId' : this.clientId,
+      'score' : score
+    });
+  };
+
+  this.setUpdate = function(data){
+    _(data.players).each(function(value,key){
+      console.log(key, self.client);
+      if(key == self.clientId){
+        $("#myScore").text(value.score);
+      }else{
+        $("#opponentScore").text(value.score);
+      }
+    });
 
   };
-  
+
+  this.checkJoined = function(data){
+    if(data.status){
+      this.gameId = data.game;
+      console.log("Joined!");
+    }else{
+      console.log("Failed To Join");
+    }
+  };
+
   this.init(obj);
 }
 
 
-var b = new board();
-var matches = null;
-var trys = 0;
-do{
-  b.createBoard();
-  matches = b.checkBoard();
-  trys++;
-}while(matches.vertical.length !== 0 || matches.horizontal.length !== 0 || matches.both.length !== 0)
+var game = new Game({
+  location : "http://localhost:3000/"
+});
+
+/*
+   var b = new board();
+   var matches = null;
+   var trys = 0;
+   do{
+   b.createBoard();
+   matches = b.checkBoard();
+   trys++;
+   }while(matches.vertical.length !== 0 || matches.horizontal.length !== 0 || matches.both.length !== 0)
 //}while(matches.vertical.length + matches.horizontal.length + matches.both.length < 9)
 var html = b.outputBoard();
 $("#jewels").html(html);
 b.setupTouch();
 b.showMatches();
 console.log("trys",trys);
+*/
 $(document).ready(function(){
-window.scroll(0,0);
+  window.scroll(0,0);
 });

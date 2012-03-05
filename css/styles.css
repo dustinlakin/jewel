@@ -8,9 +8,37 @@ body{
   overflow: hidden;
   position: relative;
   width: 312px;
-  height: 418px;
-  border: 1px solid black;
+  height: 364px;
   background: #F1F8F6;
+}
+
+#scores{
+  width:312px;
+  height: 52px;
+  background-color: pink;
+  position: relative;
+  color:white;
+}
+
+.scores{
+  position: absolute;
+  width: 110px;
+  height: 100%;
+  text-align:center;
+  font-size:  35px;
+  line-height: 52px
+}
+
+#myScore{
+  top: 0px;
+  left: 0px;
+  background-color: blue;
+}
+
+#opponentScore{
+  top: 0px;
+  left: 110px;
+  background-color: red;
 }
 
 .block{
